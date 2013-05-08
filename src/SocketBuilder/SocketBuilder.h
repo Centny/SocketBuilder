@@ -19,7 +19,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/array.hpp>
 #include <boost/thread.hpp>
-namespace SocketBuilder {
+namespace NetBuilder {
 using namespace std;
 using namespace boost;
 using namespace boost::asio;
@@ -85,13 +85,13 @@ protected:
  *a connect socket.
  */
 class TSocket: public SocketBase {
-private:
-	io_service& iosev;
 protected:
+	io_service& iosev;
 	//
 	boost::asio::ip::address radr;
 	boost::asio::ip::address ladr;
 	char cbuf[BUF_SIZE];
+	size_t blen;
 	boost::asio::streambuf sbuf;
 	//
 	boost::shared_ptr<ip::tcp::socket> psocket;
@@ -106,19 +106,19 @@ public:
 	//
 	bool connect(string host, int port);
 	void initAdr();
-	void shutdown();
-	void startRead(string eoc = DEFAULT_EOC);
+	virtual void shutdown();
+	virtual void startRead(string eoc = DEFAULT_EOC);
 	//
 	bool syncWrite(const char* data, size_t len);
 	int syncWrite(const char* data, size_t len, boost::system::error_code ec);
 	boost::shared_ptr<ip::tcp::socket> socket();
 	//
 private:
-	void readHandle_(boost::shared_ptr<TSocket> sp,
+	void readHandle_(boost::shared_ptr<TSocket> socket,
 			const boost::system::error_code& ec, std::size_t bytes_transfered);
 protected:
 	//overide method.
-	virtual void readHandle(boost::shared_ptr<TSocket> sp,
+	virtual void readHandle(boost::shared_ptr<TSocket> socket,
 			boost::asio::streambuf& buf, const boost::system::error_code& ec,
 			std::size_t bytes_transfered);
 	virtual long socketTimeout();
@@ -129,11 +129,8 @@ protected:
  *the socket server builder.
  */
 class SocketBuilder: public AsioBuilder {
-private:
-	io_service& iosev;
 protected:
-	char cbuf[BUF_SIZE];
-	boost::asio::streambuf sbuf;
+	io_service& iosev;
 	boost::shared_ptr<ip::tcp::acceptor> acceptor;
 	string eoc;
 	long stimeout;
@@ -144,11 +141,10 @@ public:
 	void setEoc(string eoc);
 	void setSocketTimeout(long sto);
 	long socketTimeout();
+	virtual void accept();
 private:
 	void acceptHandler_(boost::shared_ptr<TSocket> socket,
 			const boost::system::error_code& ec);
-public:
-	virtual void accept();
 protected:
 	virtual void acceptHandler(boost::shared_ptr<TSocket> socket,
 			const boost::system::error_code& ec);
@@ -183,11 +179,11 @@ public:
  * the UDP connect builder.
  */
 class UDPBuilder: public AsioBuilder, public SocketBase {
-private:
-	io_service& iosev;
 protected:
+	io_service& iosev;
 	//common
 	char cbuf[BUF_SIZE];
+	size_t blen;
 	ip::udp::socket *_socket;
 	short _port;
 	//client

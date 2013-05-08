@@ -7,7 +7,7 @@
 
 #include "SocketBuilder.h"
 
-namespace SocketBuilder {
+namespace NetBuilder {
 AsioBuilder::AsioBuilder(io_service& isv) :
 		iosev(isv) {
 }
@@ -66,6 +66,7 @@ TSocket::TSocket(io_service& isv) :
 	this->psocket = boost::shared_ptr<ip::tcp::socket>(
 			new ip::tcp::socket(this->iosev));
 	this->builder = 0;
+	this->blen = 0;
 }
 TSocket::~TSocket() {
 
@@ -80,10 +81,10 @@ bool TSocket::connect(string host, int port) {
 	ip::tcp::endpoint ep(ip::address_v4::from_string(host), port);
 	boost::system::error_code ec;
 	this->psocket->connect(ep, ec);
-	if (ec.value()) {
+	if (!ec.value()) {
 		this->initAdr();
 	}
-	return ec.value();
+	return !ec.value();
 }
 void TSocket::initAdr() {
 	this->radr = psocket->remote_endpoint().address();
@@ -102,7 +103,6 @@ void TSocket::startRead(string eoc) {
 	this->startTime();
 	boost::asio::async_read_until(*this->psocket, sbuf, eoc,
 			boost::bind(&TSocket::readHandle_, this, sp, _1, _2));
-	this->initAdr();
 }
 bool TSocket::syncWrite(const char* data, size_t len) {
 	boost::system::error_code ec;
@@ -142,7 +142,7 @@ SocketBuilder::SocketBuilder(io_service& isv, int port) :
 		AsioBuilder(isv), iosev(isv) {
 	this->acceptor = boost::shared_ptr<ip::tcp::acceptor>(
 			new ip::tcp::acceptor(isv, ip::tcp::endpoint(ip::tcp::v4(), port)));
-	this->stimeout = 30000;
+	this->stimeout = 10000;
 	this->eoc = DEFAULT_EOC;
 }
 
@@ -178,6 +178,7 @@ void SocketBuilder::acceptHandler(boost::shared_ptr<TSocket> socket,
 	}
 	socket->sp = socket;
 	socket->startRead(this->eoc);
+	socket->initAdr();
 	this->accept();
 }
 boost::shared_ptr<TSocket> SocketBuilder::createSocket() {
@@ -196,6 +197,7 @@ UDPBuilder::UDPBuilder(io_service& isv, int port) :
 			ip::udp::endpoint(ip::udp::v4(), port));
 	this->_port = port;
 	this->process = 0;
+	this->blen = 0;
 }
 UDPBuilder::UDPBuilder(io_service& isv, const char* dest, int port) :
 		AsioBuilder(isv), SocketBase(isv), iosev(isv) {
@@ -215,6 +217,7 @@ UDPBuilder::UDPBuilder(io_service& isv, const char* dest, int port) :
 	this->_query = new ip::udp::resolver::query(ip::udp::v4(),
 			this->_destination, tmp);
 	this->process = 0;
+	this->blen = 0;
 }
 UDPBuilder::~UDPBuilder() {
 	//common.
@@ -240,7 +243,7 @@ ip::udp::socket& UDPBuilder::socket() {
 	return *_socket;
 }
 void UDPBuilder::startReceive() {
-	if(this->socketTimeout()>100){
+	if (this->socketTimeout() > 100) {
 		this->startTime();
 	}
 	this->_socket->async_receive_from(boost::asio::buffer(cbuf, BUF_SIZE), ep,
