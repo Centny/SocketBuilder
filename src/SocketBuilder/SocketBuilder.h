@@ -219,7 +219,6 @@ public:
 		return _socket->receive_from(buf, ep);
 	}
 	virtual void startReceive();
-	virtual void startTimeReceive();
 	virtual void shutdonw();
 	void setProcess(UDPProcess *pro);
 private:

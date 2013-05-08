@@ -240,12 +240,11 @@ ip::udp::socket& UDPBuilder::socket() {
 	return *_socket;
 }
 void UDPBuilder::startReceive() {
+	if(this->socketTimeout()>100){
+		this->startTime();
+	}
 	this->_socket->async_receive_from(boost::asio::buffer(cbuf, BUF_SIZE), ep,
 			boost::bind(&UDPBuilder::readHandle_, this, _1, _2));
-}
-void UDPBuilder::startTimeReceive() {
-	this->startTime();
-	this->startReceive();
 }
 void UDPBuilder::shutdonw() {
 	this->_socket->cancel();

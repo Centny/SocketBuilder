@@ -33,7 +33,8 @@ public:
 		return UDPProcess::UDPProcessReceive;
 	}
 	void timeout(boost::system::error_code ec) {
-
+		printf("%s:timeout\n", name.c_str());
+		this->builder->shutdonw();
 	}
 };
 void testUDPClient() {
@@ -41,6 +42,7 @@ void testUDPClient() {
 	UDPProcessImpl upi("Client");
 	UDPBuilder b(ios, "127.0.0.1", 50000);
 	b.setProcess(&upi);
+	b.setSocketTimeout(10000);
 	b.startReceive();
 	b.send(boost::asio::buffer("start"));
 	ios.run();
@@ -49,7 +51,7 @@ void testUDPServer() {
 	io_service ios;
 	UDPProcessImpl upi("Server");
 	UDPBuilder b(ios, 50000);
-	b.setProcess(&upi);
+//	b.setProcess(&upi);
 	b.startReceive();
 	ios.run();
 }
