@@ -23,7 +23,10 @@ namespace SocketBuilder {
 using namespace std;
 using namespace boost;
 using namespace boost::asio;
+///
 class TSocketBuilder;
+class UDPBuilder;
+////
 #define bsleep(x) boost::this_thread::sleep(boost::posix_time::milliseconds(x))
 #define BUF_SIZE 102400
 //#define R_BUF_SIZE 2048
@@ -150,8 +153,6 @@ protected:
 			const boost::system::error_code& ec);
 	virtual boost::shared_ptr<TSocket> createSocket();
 };
-///
-class UDPBuilder;
 /*
  *the UDP connect process.
  */
