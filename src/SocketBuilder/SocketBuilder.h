@@ -35,15 +35,12 @@ class AsioBuilder {
 private:
 	io_service& iosev;
 	boost::thread_group tgrps;
-	long stimeout;
 	boost::mutex smutex;
 public:
 	AsioBuilder(io_service& isv);
 	virtual ~AsioBuilder();
 	boost::shared_ptr<deadline_timer> deadlineTimer();
 	boost::thread_group& thrGrps();
-	void setSocketTimeout(long sto);
-	virtual long socketTimeout();
 };
 /*
  * the ASIO socket base.
@@ -66,6 +63,7 @@ public:
 private:
 	io_service& iosev;
 	boost::mutex lmutex;
+	long stimeout;
 #define LM_LOCK	boost::mutex::scoped_lock lmlock(this->lmutex)
 	//
 	boost::shared_ptr<deadline_timer> rtimer;
@@ -76,14 +74,15 @@ public:
 	void unlock();
 	void startTime();
 	void cancelTime();
+	void setSocketTimeout(long sto);
+	long socketTimeout();
 private:
 	void timeoutHandler_(const boost::system::error_code& ec);
 protected:
 	virtual void timeoutHandler(const boost::system::error_code& ec)=0;
-	virtual long socketTimeout()=0;
 };
 /*
- *
+ *a connect socket.
  */
 class TSocket: public SocketBase {
 private:
@@ -127,9 +126,9 @@ protected:
 };
 
 /*
- *
+ *the socket server builder.
  */
-class SocketBuilder: public AsioBuilder, public SocketBase {
+class SocketBuilder: public AsioBuilder {
 private:
 	io_service& iosev;
 protected:
@@ -137,11 +136,14 @@ protected:
 	boost::asio::streambuf sbuf;
 	boost::shared_ptr<ip::tcp::acceptor> acceptor;
 	string eoc;
+	long stimeout;
 public:
 	SocketBuilder(io_service& isv, int port);
 	virtual ~SocketBuilder();
 	//
 	void setEoc(string eoc);
+	void setSocketTimeout(long sto);
+	long socketTimeout();
 private:
 	void acceptHandler_(boost::shared_ptr<TSocket> socket,
 			const boost::system::error_code& ec);
@@ -152,10 +154,11 @@ protected:
 			const boost::system::error_code& ec);
 	virtual boost::shared_ptr<TSocket> createSocket();
 };
-/*
- *
- */
+///
 class UDPBuilder;
+/*
+ *the UDP connect process.
+ */
 class UDPProcess {
 public:
 	/*
@@ -172,17 +175,19 @@ protected:
 public:
 	virtual ~UDPProcess() {
 	}
-	virtual UDPProcessEnd execute(boost::asio::streambuf buf,
-			ip::udp::endpoint& ep, boost::system::error_code ec)=0;
+	virtual UDPProcessEnd execute(char* buf, size_t len, ip::udp::endpoint& ep,
+			boost::system::error_code ec)=0;
+	virtual void timeout(boost::system::error_code ec)=0;
 };
-class UDPBuilder: public AsioBuilder {
+/*
+ * the UDP connect builder.
+ */
+class UDPBuilder: public AsioBuilder, public SocketBase {
 private:
 	io_service& iosev;
 protected:
 	//common
-	//
 	char cbuf[BUF_SIZE];
-	boost::asio::streambuf sbuf;
 	ip::udp::socket *_socket;
 	short _port;
 	//client
@@ -191,15 +196,16 @@ protected:
 	char *_destination;
 private:
 	ip::udp::endpoint ep;
+	UDPProcess *process;
 public:
 	//server
-	UDPBuilder(io_service& isv, short port);
+	UDPBuilder(io_service& isv, int port);
 	template<typename T>
 	void send(const T& buf, ip::udp::endpoint& ep) {
 		_socket->send_to(buf, ep);
 	}
 	//client
-	UDPBuilder(io_service& isv, const char* dest, short port);
+	UDPBuilder(io_service& isv, const char* dest, int port);
 	template<typename T>
 	void send(const T& buf) {
 		ip::udp::resolver::iterator iterator = _resolver->resolve(*_query);
@@ -213,15 +219,17 @@ public:
 		return _socket->receive_from(buf, ep);
 	}
 	virtual void startReceive();
+	virtual void startTimeReceive();
 	virtual void shutdonw();
+	void setProcess(UDPProcess *pro);
 private:
 	void readHandle_(const boost::system::error_code& ec,
 			std::size_t bytes_transfered);
-	void timeoutHandler_(const boost::system::error_code& ec);
 protected:
 	virtual void readHandle(char* buf, const boost::system::error_code& ec,
 			std::size_t bytes_transfered);
 	virtual void timeoutHandler(const boost::system::error_code& ec);
 };
+//
 } /* namespace SocketBuilder */
 #endif /* SOCKETBUILDER_H_ */

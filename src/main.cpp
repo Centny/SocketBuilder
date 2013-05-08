@@ -7,10 +7,9 @@
 
 #include <iostream>
 using namespace std;
-
-int main() {
-	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
+void testSocketBuilder(int argc, char** argv);
+int main(int argc, char** argv) {
+	testSocketBuilder(argc, argv);
 	return 0;
 }
-
 

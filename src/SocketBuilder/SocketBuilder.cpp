@@ -10,7 +10,6 @@
 namespace SocketBuilder {
 AsioBuilder::AsioBuilder(io_service& isv) :
 		iosev(isv) {
-	this->stimeout = 0;
 }
 AsioBuilder::~AsioBuilder() {
 
@@ -22,17 +21,13 @@ boost::shared_ptr<deadline_timer> AsioBuilder::deadlineTimer() {
 boost::thread_group& AsioBuilder::thrGrps() {
 	return this->tgrps;
 }
-void AsioBuilder::setSocketTimeout(long sto) {
-	this->stimeout = sto;
-}
-long AsioBuilder::socketTimeout() {
-	return this->stimeout;
-}
+
 ///////
 SocketBase::SocketBase(io_service& isv) :
 		iosev(isv) {
 	this->rtimer = boost::shared_ptr<deadline_timer>(
 			new deadline_timer(this->iosev));
+	this->stimeout = 0;
 }
 SocketBase::~SocketBase() {
 
@@ -44,14 +39,23 @@ void SocketBase::unlock() {
 	this->lmutex.unlock();
 }
 void SocketBase::startTime() {
+	if (this->stimeout < 100) {
+		return;
+	}
 	this->rtimer->expires_from_now(
-			boost::posix_time::milliseconds(this->socketTimeout()));
+			boost::posix_time::milliseconds(this->stimeout));
 	this->rtimer->async_wait(
 			boost::bind(&SocketBase::timeoutHandler_, this, _1));
 }
 void SocketBase::cancelTime() {
 	boost::system::error_code ec;
 	this->rtimer->cancel(ec);
+}
+void SocketBase::setSocketTimeout(long sto) {
+	this->stimeout = sto;
+}
+long SocketBase::socketTimeout() {
+	return this->stimeout;
 }
 void SocketBase::timeoutHandler_(const boost::system::error_code& ec) {
 	this->timeoutHandler(ec);
@@ -114,6 +118,7 @@ boost::shared_ptr<ip::tcp::socket> TSocket::socket() {
 }
 void TSocket::readHandle_(boost::shared_ptr<TSocket> sp,
 		const boost::system::error_code& ec, std::size_t bytes_transfered) {
+	this->cancelTime();
 	if (ec.value() == ECANCELED) {
 		return;
 	}
@@ -122,20 +127,22 @@ void TSocket::readHandle_(boost::shared_ptr<TSocket> sp,
 void TSocket::readHandle(boost::shared_ptr<TSocket> sp,
 		boost::asio::streambuf& buf, const boost::system::error_code& ec,
 		std::size_t bytes_transfered) {
-
 }
 long TSocket::socketTimeout() {
-	return 30000;
+	return this->builder->socketTimeout();
 }
 void TSocket::timeoutHandler(const boost::system::error_code& ec) {
+	if (ec) {
+		return;
+	}
 	this->shutdown();
 }
 ///
 SocketBuilder::SocketBuilder(io_service& isv, int port) :
-		AsioBuilder(isv), SocketBase(isv), iosev(isv) {
+		AsioBuilder(isv), iosev(isv) {
 	this->acceptor = boost::shared_ptr<ip::tcp::acceptor>(
 			new ip::tcp::acceptor(isv, ip::tcp::endpoint(ip::tcp::v4(), port)));
-	this->setSocketTimeout(30000);
+	this->stimeout = 30000;
 	this->eoc = DEFAULT_EOC;
 }
 
@@ -145,6 +152,12 @@ SocketBuilder::~SocketBuilder() {
 void SocketBuilder::setEoc(string eoc) {
 	this->eoc = eoc;
 }
+void SocketBuilder::setSocketTimeout(long sto) {
+	this->stimeout = sto;
+}
+long SocketBuilder::socketTimeout() {
+	return this->stimeout;
+}
 void SocketBuilder::acceptHandler_(boost::shared_ptr<TSocket> socket,
 		const boost::system::error_code& ec) {
 	this->acceptHandler(socket, ec);
@@ -153,6 +166,7 @@ void SocketBuilder::acceptHandler_(boost::shared_ptr<TSocket> socket,
 void SocketBuilder::accept() {
 	boost::shared_ptr<TSocket> t = this->createSocket();
 	boost::shared_ptr<ip::tcp::socket> rsoc = t->socket();
+	t->setSocketTimeout(this->socketTimeout());
 	this->acceptor->async_accept(*rsoc,
 			boost::bind(&SocketBuilder::acceptHandler, this, t, _1));
 }
@@ -173,17 +187,18 @@ boost::shared_ptr<TSocket> SocketBuilder::createSocket() {
 	return t;
 }
 ////////////////////
-UDPBuilder::UDPBuilder(io_service& isv, short port) :
-		AsioBuilder(isv), iosev(isv) {
+UDPBuilder::UDPBuilder(io_service& isv, int port) :
+		AsioBuilder(isv), SocketBase(isv), iosev(isv) {
 	this->_resolver = 0;
 	this->_destination = 0;
 	this->_query = 0;
 	this->_socket = new ip::udp::socket(this->iosev,
 			ip::udp::endpoint(ip::udp::v4(), port));
 	this->_port = port;
+	this->process = 0;
 }
-UDPBuilder::UDPBuilder(io_service& isv, const char* dest, short port) :
-		AsioBuilder(isv), iosev(isv) {
+UDPBuilder::UDPBuilder(io_service& isv, const char* dest, int port) :
+		AsioBuilder(isv), SocketBase(isv), iosev(isv) {
 	this->_port = port;
 	this->_socket = new ip::udp::socket(this->iosev,
 			ip::udp::endpoint(ip::udp::v4(), 0));
@@ -199,7 +214,7 @@ UDPBuilder::UDPBuilder(io_service& isv, const char* dest, short port) :
 	}
 	this->_query = new ip::udp::resolver::query(ip::udp::v4(),
 			this->_destination, tmp);
-
+	this->process = 0;
 }
 UDPBuilder::~UDPBuilder() {
 	//common.
@@ -228,18 +243,54 @@ void UDPBuilder::startReceive() {
 	this->_socket->async_receive_from(boost::asio::buffer(cbuf, BUF_SIZE), ep,
 			boost::bind(&UDPBuilder::readHandle_, this, _1, _2));
 }
+void UDPBuilder::startTimeReceive() {
+	this->startTime();
+	this->startReceive();
+}
+void UDPBuilder::shutdonw() {
+	this->_socket->cancel();
+	this->cancelTime();
+	boost::system::error_code ignored_ec;
+	this->_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both,
+			ignored_ec);
+}
+void UDPBuilder::setProcess(UDPProcess *pro) {
+	this->process = pro;
+	this->process->builder = this;
+}
 void UDPBuilder::readHandle_(const boost::system::error_code& ec,
 		std::size_t bytes_transfered) {
+	this->cancelTime();
+	if (ec.value() == ECANCELED) {
+		return;
+	}
 	this->readHandle(cbuf, ec, bytes_transfered);
-}
-void UDPBuilder::timeoutHandler_(const boost::system::error_code& ec) {
-	this->timeoutHandler(ec);
 }
 void UDPBuilder::readHandle(char* buf, const boost::system::error_code& ec,
 		std::size_t bytes_transfered) {
-
+	if (this->process) {
+		UDPProcess::UDPProcessEnd pe = this->process->execute(buf,
+				bytes_transfered, ep, ec);
+		switch (pe) {
+		case UDPProcess::UDPProcessReceive:
+			this->startReceive();
+			break;
+		case UDPProcess::UDPProcessClose:
+			this->shutdonw();
+			break;
+		default:
+			break;
+		}
+	} else {
+		this->startReceive();
+	}
 }
 void UDPBuilder::timeoutHandler(const boost::system::error_code& ec) {
-
+	if (ec) {
+		return;
+	}
+	if (this->process) {
+		this->process->timeout(ec);
+	}
 }
 } /* namespace SocketBuilder */
