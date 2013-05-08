@@ -22,13 +22,14 @@ public:
 			ip::udp::endpoint& ep, boost::system::error_code ec) {
 		buf[len] = 0;
 		printf("%s:%s\n", name.c_str(), buf);
-		blen = sprintf(buf, "%d", idx);
+		blen = sprintf(buf, "%s%d", name.c_str(), idx);
 		if ("Client" == name) {
 			this->builder->send(boost::asio::buffer(buf, blen));
 		} else {
 			this->builder->send(boost::asio::buffer(buf, blen), ep);
 		}
 		idx++;
+		sleep(1);
 		return UDPProcess::UDPProcessReceive;
 	}
 	void timeout(boost::system::error_code ec) {
