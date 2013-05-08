@@ -6,7 +6,7 @@
  */
 #include "SocketBuilder.h"
 #include <iostream>
-using namespace NetBuilder;
+using namespace SocketBuilder;
 class UDPProcessImpl: public UDPProcess {
 public:
 	string name;
@@ -84,10 +84,10 @@ public:
 		this->shutdown();
 	}
 };
-class SocketBuilderImpl: public SocketBuilder {
+class SocketBuilderImpl: public TSocketBuilder {
 public:
 	SocketBuilderImpl(io_service& isv, int port) :
-			SocketBuilder(isv, port) {
+			TSocketBuilder(isv, port) {
 	}
 	virtual boost::shared_ptr<TSocket> createSocket() {
 		TSocketImpl *tsi = new TSocketImpl(this->iosev);

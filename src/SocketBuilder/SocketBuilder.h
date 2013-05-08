@@ -19,11 +19,11 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/array.hpp>
 #include <boost/thread.hpp>
-namespace NetBuilder {
+namespace SocketBuilder {
 using namespace std;
 using namespace boost;
 using namespace boost::asio;
-class SocketBuilder;
+class TSocketBuilder;
 #define bsleep(x) boost::this_thread::sleep(boost::posix_time::milliseconds(x))
 #define BUF_SIZE 102400
 //#define R_BUF_SIZE 2048
@@ -98,7 +98,7 @@ protected:
 
 public:
 	boost::shared_ptr<TSocket> sp;
-	SocketBuilder *builder;
+	TSocketBuilder *builder;
 public:
 	TSocket(io_service& isv);
 	virtual ~TSocket();
@@ -128,15 +128,15 @@ protected:
 /*
  *the socket server builder.
  */
-class SocketBuilder: public AsioBuilder {
+class TSocketBuilder: public AsioBuilder {
 protected:
 	io_service& iosev;
 	boost::shared_ptr<ip::tcp::acceptor> acceptor;
 	string eoc;
 	long stimeout;
 public:
-	SocketBuilder(io_service& isv, int port);
-	virtual ~SocketBuilder();
+	TSocketBuilder(io_service& isv, int port);
+	virtual ~TSocketBuilder();
 	//
 	void setEoc(string eoc);
 	void setSocketTimeout(long sto);

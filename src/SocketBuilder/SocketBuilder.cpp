@@ -1,5 +1,5 @@
 /*
- * SocketBuilder.cpp
+ * TSocketBuilder.cpp
  *
  *  Created on: May 7, 2013
  *      Author: Scorpion
@@ -7,7 +7,7 @@
 
 #include "SocketBuilder.h"
 
-namespace NetBuilder {
+namespace SocketBuilder {
 AsioBuilder::AsioBuilder(io_service& isv) :
 		iosev(isv) {
 }
@@ -138,7 +138,7 @@ void TSocket::timeoutHandler(const boost::system::error_code& ec) {
 	this->shutdown();
 }
 ///
-SocketBuilder::SocketBuilder(io_service& isv, int port) :
+TSocketBuilder::TSocketBuilder(io_service& isv, int port) :
 		AsioBuilder(isv), iosev(isv) {
 	this->acceptor = boost::shared_ptr<ip::tcp::acceptor>(
 			new ip::tcp::acceptor(isv, ip::tcp::endpoint(ip::tcp::v4(), port)));
@@ -146,32 +146,32 @@ SocketBuilder::SocketBuilder(io_service& isv, int port) :
 	this->eoc = DEFAULT_EOC;
 }
 
-SocketBuilder::~SocketBuilder() {
+TSocketBuilder::~TSocketBuilder() {
 }
 
-void SocketBuilder::setEoc(string eoc) {
+void TSocketBuilder::setEoc(string eoc) {
 	this->eoc = eoc;
 }
-void SocketBuilder::setSocketTimeout(long sto) {
+void TSocketBuilder::setSocketTimeout(long sto) {
 	this->stimeout = sto;
 }
-long SocketBuilder::socketTimeout() {
+long TSocketBuilder::socketTimeout() {
 	return this->stimeout;
 }
-void SocketBuilder::acceptHandler_(boost::shared_ptr<TSocket> socket,
+void TSocketBuilder::acceptHandler_(boost::shared_ptr<TSocket> socket,
 		const boost::system::error_code& ec) {
 	this->acceptHandler(socket, ec);
 }
 //virtual method.
-void SocketBuilder::accept() {
+void TSocketBuilder::accept() {
 	boost::shared_ptr<TSocket> t = this->createSocket();
 	boost::shared_ptr<ip::tcp::socket> rsoc = t->socket();
 	t->setSocketTimeout(this->socketTimeout());
 	this->acceptor->async_accept(*rsoc,
-			boost::bind(&SocketBuilder::acceptHandler, this, t, _1));
+			boost::bind(&TSocketBuilder::acceptHandler, this, t, _1));
 }
 
-void SocketBuilder::acceptHandler(boost::shared_ptr<TSocket> socket,
+void TSocketBuilder::acceptHandler(boost::shared_ptr<TSocket> socket,
 		const boost::system::error_code& ec) {
 	if (ec) {
 		return;
@@ -181,7 +181,7 @@ void SocketBuilder::acceptHandler(boost::shared_ptr<TSocket> socket,
 	socket->initAdr();
 	this->accept();
 }
-boost::shared_ptr<TSocket> SocketBuilder::createSocket() {
+boost::shared_ptr<TSocket> TSocketBuilder::createSocket() {
 	boost::shared_ptr<TSocket> t = boost::shared_ptr<TSocket>(
 			new TSocket(this->iosev));
 	t->builder = this;
