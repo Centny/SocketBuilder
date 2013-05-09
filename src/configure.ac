@@ -4,13 +4,14 @@ AC_PREREQ([2.69])
 AC_INIT([SocketBuilder], [1.0.0], [Centny@gmail.com])
 #LT_INIT
 AM_INIT_AUTOMAKE
-#AC_CONFIG_SRCDIR([SocketBuilder/SocketBuilder.h])
+AC_CONFIG_SRCDIR([SocketBuilder/SocketBuilder.h])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_CPP
+AC_PROG_RANLIB
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lcurl':
@@ -30,5 +31,5 @@ AC_FUNC_ERROR_AT_LINE
 AC_FUNC_FORK
 AC_CHECK_FUNCS([memset mkdir setlocale strchr])
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile SocketBuilder/Makefile])
 AC_OUTPUT
