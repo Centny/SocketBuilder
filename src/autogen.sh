@@ -1,3 +1,4 @@
+#!/bin/bash
 echo 1
 aclocal --force -I m4
 echo 2
@@ -11,3 +12,5 @@ automake
 echo 6
 autoconf
 echo all end
+
+
