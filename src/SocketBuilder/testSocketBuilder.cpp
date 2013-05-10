@@ -30,7 +30,7 @@ public:
 			this->builder->send(boost::asio::buffer(buf, blen), ep);
 		}
 		idx++;
-		sleep(1);
+		bsleep(1000);
 		return UDPProcess::UDPProcessReceive;
 	}
 	void timeout(boost::system::error_code ec) {
@@ -64,7 +64,7 @@ public:
 		if (name == "Client") {
 			blen = sprintf(cbuf, "%s%d"DEFAULT_EOC, name.c_str(), idx);
 			this->syncWrite(cbuf, blen);
-			sleep(1);
+			bsleep(1000);
 		}
 		idx++;
 		this->startRead();

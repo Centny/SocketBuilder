@@ -35,3 +35,7 @@ src/stamp-h1
 *.a
 
 src/SocketBuilder/Makefile
+/*.sdf
+/*.opensdf
+
+/*.suo
