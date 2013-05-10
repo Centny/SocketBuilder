@@ -107,7 +107,7 @@ void TSocket::startRead(string eoc) {
 bool TSocket::syncWrite(const char* data, size_t len) {
 	boost::system::error_code ec;
 	this->psocket->write_some(buffer(data, len), ec);
-	return ec.value()!=0;
+	return ec.value() != 0;
 }
 int TSocket::syncWrite(const char* data, size_t len,
 		boost::system::error_code ec) {
@@ -206,7 +206,7 @@ UDPBuilder::UDPBuilder(io_service& isv, const char* dest, int port) :
 			ip::udp::endpoint(ip::udp::v4(), 0));
 	this->_resolver = new ip::udp::resolver(this->iosev);
 	this->_destination = new char[strlen(dest)];
-	_memccpy(this->_destination, dest, sizeof(char), strlen(dest));
+	memccpy(this->_destination, dest, sizeof(char), strlen(dest));
 	char tmp[255];
 	int ts = std::sprintf(tmp, "%d", port);
 	if (ts < 255) {
